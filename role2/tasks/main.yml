@@ -1,0 +1,46 @@
+---
+# tasks file for ./roles/role2
+- name: Apache install
+  ansible.builtin.apt:
+    name: apache2
+
+- name: Creating folder for index.html
+  ansible.builtin.file:
+      path: /var/www/html
+      state: directory
+      mode: u+rw,g+rw,o+rw
+
+- name: Add index.html
+  template:
+    src: "index.html.jinja2"
+    dest: "/var/www/html/index.html"
+  notify: "Restart Apache"
+
+- name: Add index.conf
+  template:
+    src: "index.conf.jinja2"
+    dest: "/etc/apache2/sites-available/index.conf"
+  notify: "Restart Apache"
+    
+- name: Open 80 port
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: 80
+    jump: ACCEPT
+
+- name: Check 80 port
+  ansible.builtin.wait_for:
+    port: 80
+    delay: 5
+
+- name: Starting apache2
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: yes
+
+- name: Checks  index.html
+  ansible.builtin.uri:
+    url: http://{{ ansible_default_ipv4.address }}:80
+    return_content: true
